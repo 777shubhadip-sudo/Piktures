@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Lumina" parent="android:Theme.DeviceDefault.NoActionBar" />
+
+    <style name="Theme.Lumina.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#C48CB3</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
+        <item name="postSplashScreenTheme">@style/Theme.Lumina</item>
+    </style>
+</resources>

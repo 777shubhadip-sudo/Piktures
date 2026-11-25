@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "UserCloudProfile": {
+      "title": "UserCloudProfile",
+      "description": "Authenticated user's synced gallery preferences and account metadata",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Optional user display name from Google Sign-In"
+        },
+        "email": {
+          "type": "string",
+          "description": "Optional user email from Google Sign-In (owner-only PII)"
+        },
+        "themeMode": {
+          "type": "string",
+          "enum": ["DARK", "LIGHT", "SYSTEM"],
+          "description": "Synced gallery theme mode"
+        },
+        "gridColumns": {
+          "type": "integer",
+          "description": "Synced default grid column count (2 to 5)"
+        },
+        "relockTimeout": {
+          "type": "string",
+          "enum": ["IMMEDIATE", "THIRTY_SEC", "FIVE_MIN", "NEVER"],
+          "description": "Synced hidden vault auto-relock timeout"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp written via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp written via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["userId", "themeMode", "gridColumns", "relockTimeout", "createdAt", "updatedAt"]
+    },
+    "SyncedMediaItem": {
+      "title": "SyncedMediaItem",
+      "description": "Cloud-synced favorite bookmark and personal note for a gallery photo or video",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user"
+        },
+        "mediaKey": {
+          "type": "string",
+          "description": "Stable identifier for the gallery item"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "File display name"
+        },
+        "bucketName": {
+          "type": "string",
+          "description": "Album or folder display name"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["IMAGE", "VIDEO"],
+          "description": "Media item type"
+        },
+        "favorite": {
+          "type": "boolean",
+          "description": "Whether the item is bookmarked as a favorite"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional personal caption or memory note"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "description": "File size in bytes"
+        },
+        "dateTakenMs": {
+          "type": "integer",
+          "description": "Epoch milliseconds when media was captured"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp written via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp written via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["userId", "mediaKey", "displayName", "bucketName", "mediaType", "favorite", "sizeBytes", "dateTakenMs", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserCloudProfile"
+      },
+      "description": "Stores per-user synced settings and account metadata"
+    },
+    "/users/{userId}/synced_items/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/SyncedMediaItem"
+      },
+      "description": "Stores per-user cloud-synced favorites and photo/video notes"
+    }
+  }
+}

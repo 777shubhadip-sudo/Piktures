@@ -1,0 +1,110 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Schema Validation Helpers
+    function isValidUserCloudProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 254)) &&
+             data.themeMode is string && data.themeMode.size() <= 32 && data.themeMode in ['DARK', 'LIGHT', 'SYSTEM'] &&
+             data.gridColumns is int && data.gridColumns >= 2 && data.gridColumns <= 5 &&
+             data.relockTimeout is string && data.relockTimeout.size() <= 32 && data.relockTimeout in ['IMMEDIATE', 'THIRTY_SEC', 'FIVE_MIN', 'NEVER'];
+    }
+
+    function isValidSyncedMediaItem(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.mediaKey is string && data.mediaKey.size() >= 1 && data.mediaKey.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 200 &&
+             data.bucketName is string && data.bucketName.size() <= 120 &&
+             data.mediaType is string && data.mediaType.size() <= 16 && data.mediaType in ['IMAGE', 'VIDEO'] &&
+             data.favorite is bool &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 500)) &&
+             data.sizeBytes is int && data.sizeBytes >= 0 &&
+             data.dateTakenMs is int && data.dateTakenMs >= 0;
+    }
+
+    // User Cloud Profile & Synced Preferences
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'themeMode', 'gridColumns', 'relockTimeout', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'themeMode', 'gridColumns', 'relockTimeout', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserCloudProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserCloudProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'themeMode', 'gridColumns', 'relockTimeout', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // User-Scoped Synced Media Bookmarks & Notes
+      match /synced_items/{itemId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(itemId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(itemId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'mediaKey', 'displayName', 'bucketName', 'mediaType', 'favorite', 'sizeBytes', 'dateTakenMs', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'mediaKey', 'displayName', 'bucketName', 'mediaType', 'favorite', 'note', 'sizeBytes', 'dateTakenMs', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidSyncedMediaItem(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(itemId) &&
+                         isValidSyncedMediaItem(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().mediaKey == existing().mediaKey &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['note', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['favorite', 'displayName', 'bucketName', 'sizeBytes', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['favorite', 'note', 'displayName', 'bucketName', 'sizeBytes', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(itemId);
+      }
+    }
+  }
+}

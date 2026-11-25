@@ -1,0 +1,8 @@
+{
+  "name": "Piktures",
+  "description": "A Liquid Glass gallery app with customizable palette themes, MediaStore browsing, fanned story collections, photo/video editors, cloud backup, and an AES-256-GCM encrypted vault.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
